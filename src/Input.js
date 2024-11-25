@@ -1,7 +1,7 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useState, forwardRef, memo, useImperativeHandle } from 'react';
 import './styles.css';
 
-const Input = React.forwardRef(({
+export const Input = memo(forwardRef(({
   onFocus,
   onBlur,
   onChange,
@@ -18,35 +18,37 @@ const Input = React.forwardRef(({
   const inputRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
 
+  useImperativeHandle(ref, () => inputRef.current, []);
+
   useEffect(() => {
     const handleTouchMove = () => {
-      if (inputRef.current) {
+      if (inputRef.current && isFocused) {
         inputRef.current.blur();
       }
     };
 
-    if (isFocused) {
-      document.addEventListener('touchmove', handleTouchMove);
-    }
+     document.addEventListener('touchmove', handleTouchMove);
+
+     return ()=> {
+       document.removeEventListener('touchmove', handleTouchMove);
+     }
   }, [isFocused]);
 
-  const handleFocus = useCallback((e) => {
+  const handleFocus = (e) => {
     setIsFocused(true);
-    setTimeout(() => {
-      if (onFocus) onFocus(e);
-    }, 0);
-  }, [onFocus]);
+    if (onFocus) onFocus(e);
+  }
 
-  const handleBlur = useCallback((e) => {
+  const handleBlur = (e) => {
     setIsFocused(false);
     if (onBlur) onBlur(e);
-  }, [onBlur]);
+  };
 
-  const handleChange = useCallback((e) => {
+  const handleChange = (e) => {
     if (onChange) onChange(e);
-  }, [onChange]);
+  };
 
-  const inputClassName = [
+  const inputClassNames = [
     'input',
     error ? 'error' : '',
     loading ? 'loading' : '',
@@ -56,26 +58,22 @@ const Input = React.forwardRef(({
   return (
     <div className="input-wrapper">
       <input
-        ref={(node) => {
-          inputRef.current = node;
-          if (typeof ref === 'function') ref(node);
-          else if (ref) ref.current = node;
-        }}
-        className={inputClassName}
+        data-testid="input"
+        ref={inputRef}
+        className={inputClassNames}
         type={type}
         value={value}
         onFocus={handleFocus}
         onBlur={handleBlur}
         onChange={handleChange}
-        disabled={disabled}
+        disabled={disabled || loading}
         placeholder={placeholder}
         {...props}
       />
+      {loading && <div data-testid="loader" className="loader" />}
       {error && errorMessage && (
         <div className="error-message">{errorMessage}</div>
       )}
     </div>
   );
-});
-
-export default Input;
+}));
